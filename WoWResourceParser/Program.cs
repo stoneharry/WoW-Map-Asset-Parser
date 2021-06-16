@@ -10,10 +10,56 @@ namespace WoWResourceParser
     {
         static void Main(string[] args)
         {
+            bool extract = true;
+            bool package = true;
+
             string adtFolder = "E:\\_NewProjectWoW\\Client\\World\\Maps\\DragonIsles";
             string dataFolder = "E:\\_NewProjectWoW\\Client";
             string assetsFilePath = "assets.txt";
 
+            string destFolder = "E:\\_NewProjectWoW\\_Package";
+
+            if (extract)
+            {
+                ExtractAssets(adtFolder, dataFolder, assetsFilePath);
+            }
+
+            if (package)
+            {
+                FetchAssets(dataFolder, destFolder, assetsFilePath);
+            }
+
+            Console.WriteLine("Done.");
+        }
+
+        static void FetchAssets(string dataFolder, string destFolder, string assetsFilePath)
+        {
+            Console.WriteLine("Packaging...");
+            Console.WriteLine("-------------------");
+            foreach (var line in File.ReadAllLines(assetsFilePath))
+            {
+                var fullPath = dataFolder + "\\" + line;
+                if (File.Exists(fullPath))
+                {
+                    var destFullPath = destFolder + "\\" + line;
+                    var containingDir = destFullPath.Substring(0, destFullPath.LastIndexOf('\\'));
+                    Directory.CreateDirectory(containingDir);
+                    if (File.Exists(destFullPath))
+                    {
+                        File.Delete(destFullPath);
+                    }
+                    File.Copy(fullPath, destFullPath);
+                }
+                else
+                {
+                    Console.WriteLine($" [ERROR] Unable to find path {fullPath}");
+                }
+            }
+            Console.WriteLine("-------------------");
+        }
+
+        static void ExtractAssets(string adtFolder, string dataFolder, string assetsFilePath)
+        {
             Console.WriteLine("-------------------");
             var banner = @"
 Starting program:
@@ -54,8 +100,6 @@ ADT Folder:" + $"\n {adtFolder}\n" +
             SaveFileOutput(assetsFilePath, wmos, m2s, blps);
             Console.WriteLine("\nSaved results to: " + assetsFilePath);
             Console.WriteLine("-------------------");
-
-            Console.WriteLine("Done.");
         }
 
         static void SaveFileOutput(string path, List<string> wmos, List<string> m2s, List<string> blps)
@@ -169,8 +213,13 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                     using (var binReader = new BinaryReader(fileStream))
                     {
                         var blp = Encoding.UTF8.GetString(binReader.ReadBytes((int)pair.Key));
-                        blp = blp.Substring(0, blp.Length - 1); // Remove string terminator
-                        blps.Add(blp);
+                        // Factor in string terminator
+                        if (blp.Length > 1)
+                        {
+                            // Remove string terminator
+                            blp = blp.Substring(0, blp.Length - 1);
+                            blps.Add(blp);
+                        }
                     }
                 }
             }
@@ -239,11 +288,6 @@ ADT Folder:" + $"\n {adtFolder}\n" +
         {
             var str = path.ToLower();
             return allowed.Any(ext => str.EndsWith(ext));
-        }
-
-        static string ExtractTextureFromOffset()
-        {
-            return "";
         }
 
         static string ReadNullTerminatedString(BinaryReader stream)

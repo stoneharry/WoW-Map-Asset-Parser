@@ -13,8 +13,8 @@ namespace WoWResourceParser
             bool extract = true;
             bool package = true;
 
-            string adtFolder = "E:\\_NewProjectWoW\\Client\\World\\Maps\\DragonIsles";
-            string dataFolder = "E:\\_NewProjectWoW\\Client";
+            string adtFolder = "E:\\_NewProjectWoW\\_HOCKA\\HourofTwillight\\world\\maps\\DungeonMode";
+            string dataFolder = "E:\\_NewProjectWoW\\_HOCKA\\mpqs";
             string assetsFilePath = "assets.txt";
 
             string destFolder = "E:\\_NewProjectWoW\\_Package";
@@ -38,7 +38,7 @@ namespace WoWResourceParser
             Console.WriteLine("-------------------");
             foreach (var line in File.ReadAllLines(assetsFilePath))
             {
-                var fullPath = dataFolder + "\\" + line;
+                var fullPath = dataFolder + "\\" + line.Replace(".MDX", ".M2");
                 if (File.Exists(fullPath))
                 {
                     var destFullPath = destFolder + "\\" + line;
@@ -145,7 +145,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
         {
             foreach (var m2Path in m2s)
             {
-                string fullM2Path = $"{dataFolder}\\{m2Path}";
+                string fullM2Path = $"{dataFolder}\\{m2Path.Replace(".MDX", ".M2")}";
                 if (File.Exists(fullM2Path))
                 {
                     ExtractAssetsFromM2(ref blps, fullM2Path);

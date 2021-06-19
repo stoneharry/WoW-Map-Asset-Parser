@@ -38,10 +38,11 @@ namespace WoWResourceParser
             Console.WriteLine("-------------------");
             foreach (var line in File.ReadAllLines(assetsFilePath))
             {
-                var fullPath = dataFolder + "\\" + line.Replace(".MDX", ".M2");
+                var friendlyLine = line.Replace(".MDX", ".M2").Replace('/', '\\'); ;
+                var fullPath = dataFolder + "\\" + friendlyLine;
                 if (File.Exists(fullPath))
                 {
-                    var destFullPath = destFolder + "\\" + line;
+                    var destFullPath = destFolder + "\\" + friendlyLine;
                     var containingDir = destFullPath.Substring(0, destFullPath.LastIndexOf('\\'));
                     Directory.CreateDirectory(containingDir);
                     if (File.Exists(destFullPath))
@@ -118,11 +119,13 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                 if (!filePath.ToLower().EndsWith(".adt"))
                     continue;
 
-                m2s.AddRange(ExtractM2PathsFromADT(filePath));
-                wmos.AddRange(ExtractWMOPathsFromADT(filePath));
+                var newM2s = ExtractM2PathsFromADT(filePath);
+                m2s.AddRange(newM2s);
+                var newWMOs = ExtractWMOPathsFromADT(filePath);
+                wmos.AddRange(newWMOs);
                 blps.AddRange(ExtractBLPPathsFromADT(filePath));
 
-                Console.WriteLine($" {filePath}:\n  {m2s.Count} M2 paths\n  {wmos.Count} WMO paths");
+                Console.WriteLine($" {filePath}:\n  {newM2s.Count} M2 paths\n  {newWMOs.Count} WMO paths");
             }
         }
 
@@ -294,7 +297,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                                 }
                                 else
                                 {
-                                    Console.WriteLine(" [ERROR]: Invalid MOTX BLP: " + blp);
+                                    //Console.WriteLine(" [ERROR]: Invalid MOTX BLP: " + blp); // TODO: Refactor logging
                                 }
                             }
                         }
@@ -307,29 +310,36 @@ ADT Folder:" + $"\n {adtFolder}\n" +
         static List<uint> GetWMOMOTXOffsetsFromMOMT(string path)
         {
             var motxOffsets = new List<uint>();
-            long offset = FindChunkOffset(path, new int[] { 'T', 'M', 'O', 'M' }) + 4;
-            if (offset > 0)
+            try
             {
-                var numTextures = GetNumTexturesFromWMO(path);
-                using (var fileStream = new FileStream(path, FileMode.Open))
+                long offset = FindChunkOffset(path, new int[] { 'T', 'M', 'O', 'M' }) + 4;
+                if (offset > 0)
                 {
-                    fileStream.Position = offset;
-                    using (var binReader = new BinaryReader(fileStream))
+                    var numTextures = GetNumTexturesFromWMO(path);
+                    using (var fileStream = new FileStream(path, FileMode.Open))
                     {
-                        for (var i = 0; i < numTextures; ++i)
+                        fileStream.Position = offset;
+                        using (var binReader = new BinaryReader(fileStream))
                         {
-                            fileStream.Position = fileStream.Position + 12;
-                            var tex1 = binReader.ReadUInt32();
-                            if (tex1 > 0)
-                                motxOffsets.Add(tex1);
-                            fileStream.Position = fileStream.Position + 8;
-                            var tex2 = binReader.ReadUInt32();
-                            if (tex2 > 0)
-                                motxOffsets.Add(tex2);
-                            fileStream.Position = fileStream.Position + 36;
+                            for (var i = 0; i < numTextures; ++i)
+                            {
+                                fileStream.Position = fileStream.Position + 12;
+                                var tex1 = binReader.ReadUInt32();
+                                if (tex1 > 0)
+                                    motxOffsets.Add(tex1);
+                                fileStream.Position = fileStream.Position + 8;
+                                var tex2 = binReader.ReadUInt32();
+                                if (tex2 > 0)
+                                    motxOffsets.Add(tex2);
+                                fileStream.Position = fileStream.Position + 36;
+                            }
                         }
                     }
                 }
+            }
+            catch (EndOfStreamException e)
+            {
+                //Console.WriteLine(" [EXCEPTION] " + e); // TODO: Refactor logging
             }
             return motxOffsets;
         }

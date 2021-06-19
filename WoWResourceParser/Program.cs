@@ -17,7 +17,7 @@ namespace WoWResourceParser
             string dataFolder = "E:\\_NewProjectWoW\\_HOCKA\\mpqs";
             string assetsFilePath = "assets.txt";
 
-            string destFolder = "D:\\WoW 3.3.5a\\Data\\patch-5";
+            string destFolder = "D:\\WoW 3.3.5a\\Data\\patch-5.MPQ";
 
             if (extract)
             {
@@ -261,11 +261,12 @@ ADT Folder:" + $"\n {adtFolder}\n" +
 
         static void ExtractAssetsFromWMO(ref List<string> m2s, ref List<string> blps, string path)
         {
-            m2s.AddRange(ExtractStringListFromChunk(
+            var newM2s = ExtractStringListFromChunk(
                 path,
                 // NDOM = MODN chunk
                 new int[] { 'N', 'D', 'O', 'M' },
-                new string[] { ".m2", ".mdx" }.ToList()));
+                new string[] { ".m2", ".mdx" }.ToList());
+            m2s.AddRange(newM2s);
 
             // Read The MOMT chunk for offsets into MOTX chunk
             var motxOffsets = GetWMOMOTXOffsetsFromMOMT(path);
@@ -399,11 +400,12 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                     while (continueReading)
                     {
                         var str = ReadNullTerminatedString(binReader);
-                        if (str.Length == 0 || !ValidFileExtension(str, extensionsValidated))
+                        if (fileStream.Position >= fileStream.Length || 
+                            (str.Length > 0 && !ValidFileExtension(str, extensionsValidated)))
                         {
                             continueReading = false;
                         }
-                        else
+                        else if (str.Length > 0)
                         {
                             list.Add(str);
                         }

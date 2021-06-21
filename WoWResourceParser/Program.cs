@@ -269,7 +269,10 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                         if (blp.Length > 1)
                         {
                             // Remove string terminator
-                            blp = blp.Substring(0, blp.Length - 1);
+                            if (blp[blp.Length - 1] == '\0')
+                            {
+                                blp = blp.Substring(0, blp.Length - 1);
+                            }
                             blps.Add(blp);
                         }
                     }

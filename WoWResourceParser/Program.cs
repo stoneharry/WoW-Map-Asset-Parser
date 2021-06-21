@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace WoWResourceParser
 {
@@ -148,7 +149,11 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                         if (subFilePath.ToUpper().Contains(file))
                         {
                             subWmos.Add(parentShortFolder + "\\" + subFilePath);
-                            ExtractAssetsFromWMO(ref m2s, ref blps, filePath);
+                            // Check for x_000.wmo - a sub wmo with no useful data for us
+                            if (!Regex.IsMatch(subFilePath, @"_\d{3}\.\wmo"))
+                            {
+                                ExtractAssetsFromWMO(ref m2s, ref blps, filePath);
+                            }
                         }
                     }
                 }
@@ -298,7 +303,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                                 }
                                 else
                                 {
-                                    //Console.WriteLine(" [ERROR]: Invalid MOTX BLP: " + blp); // TODO: Refactor logging
+                                    Console.WriteLine(" [ERROR]: Invalid MOTX BLP: " + blp);
                                 }
                             }
                         }
@@ -311,36 +316,31 @@ ADT Folder:" + $"\n {adtFolder}\n" +
         static List<uint> GetWMOMOTXOffsetsFromMOMT(string path)
         {
             var motxOffsets = new List<uint>();
-            try
+            long offset = FindChunkOffset(path, new int[] { 'T', 'M', 'O', 'M' }) + 4;
+            if (offset > 0)
             {
-                long offset = FindChunkOffset(path, new int[] { 'T', 'M', 'O', 'M' }) + 4;
-                if (offset > 0)
+                var numTextures = GetNumTexturesFromWMO(path);
+                using (var fileStream = new FileStream(path, FileMode.Open))
                 {
-                    var numTextures = GetNumTexturesFromWMO(path);
-                    using (var fileStream = new FileStream(path, FileMode.Open))
+                    fileStream.Position = offset;
+                    using (var binReader = new BinaryReader(fileStream))
                     {
-                        fileStream.Position = offset;
-                        using (var binReader = new BinaryReader(fileStream))
+                        for (var i = 0; i < numTextures; ++i)
                         {
-                            for (var i = 0; i < numTextures; ++i)
-                            {
-                                fileStream.Position = fileStream.Position + 12;
-                                var tex1 = binReader.ReadUInt32();
-                                if (tex1 > 0)
-                                    motxOffsets.Add(tex1);
-                                fileStream.Position = fileStream.Position + 8;
-                                var tex2 = binReader.ReadUInt32();
-                                if (tex2 > 0)
-                                    motxOffsets.Add(tex2);
-                                fileStream.Position = fileStream.Position + 36;
-                            }
+                            if ((fileStream.Position + 64) > fileStream.Length)
+                                break;
+                            fileStream.Position = fileStream.Position + 12;
+                            var tex1 = binReader.ReadUInt32();
+                            if (tex1 > 0)
+                                motxOffsets.Add(tex1);
+                            fileStream.Position = fileStream.Position + 8;
+                            var tex2 = binReader.ReadUInt32();
+                            if (tex2 > 0)
+                                motxOffsets.Add(tex2);
+                            fileStream.Position = fileStream.Position + 36;
                         }
                     }
                 }
-            }
-            catch (EndOfStreamException e)
-            {
-                //Console.WriteLine(" [EXCEPTION] " + e); // TODO: Refactor logging
             }
             return motxOffsets;
         }

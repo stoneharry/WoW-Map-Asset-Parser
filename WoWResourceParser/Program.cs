@@ -9,6 +9,17 @@ namespace WoWResourceParser
 {
     class Program
     {
+        private const string LogPath = "log.txt";
+
+        static void Log(string message)
+        {
+            Console.WriteLine(message);
+            using (var file = File.AppendText(LogPath))
+            {
+                file.WriteLine(message);
+            }
+        }
+
         static void Main(string[] args)
         {
             bool extract = true;
@@ -20,6 +31,8 @@ namespace WoWResourceParser
 
             string destFolder = "D:\\WoW 3.3.5a\\Data\\patch-5.MPQ";
 
+            File.Delete(LogPath);
+
             if (extract)
             {
                 ExtractAssets(adtFolder, dataFolder, assetsFilePath);
@@ -30,13 +43,13 @@ namespace WoWResourceParser
                 FetchAssets(dataFolder, destFolder, assetsFilePath);
             }
 
-            Console.WriteLine("Done.");
+            Log("Done.");
         }
 
         static void FetchAssets(string dataFolder, string destFolder, string assetsFilePath)
         {
-            Console.WriteLine("Packaging...");
-            Console.WriteLine("-------------------");
+            Log("Packaging...");
+            Log("-------------------");
             foreach (var line in File.ReadAllLines(assetsFilePath))
             {
                 var friendlyLine = line.Replace(".MDX", ".M2").Replace('/', '\\'); ;
@@ -54,15 +67,15 @@ namespace WoWResourceParser
                 }
                 else
                 {
-                    Console.WriteLine($" [ERROR] Unable to find path {fullPath}");
+                    Log($" [ERROR] Unable to find path {fullPath}");
                 }
             }
-            Console.WriteLine("-------------------");
+            Log("-------------------");
         }
 
         static void ExtractAssets(string adtFolder, string dataFolder, string assetsFilePath)
         {
-            Console.WriteLine("-------------------");
+            Log("-------------------");
             var banner = @"
 Starting program:
  For each ADT:
@@ -77,31 +90,31 @@ Starting program:
 
 ADT Folder:" + $"\n {adtFolder}\n" +
 "Data Folder:" + $"\n {dataFolder}\n";
-            Console.WriteLine(banner);
-            Console.WriteLine("-------------------");
+            Log(banner);
+            Log("-------------------");
 
             var wmos = new List<string>();
             var m2s = new List<string>();
             var blps = new List<string>();
 
-            Console.WriteLine("Parsing all ADTs...");
+            Log("Parsing all ADTs...");
             ParseAllADTs(ref wmos, ref m2s, ref blps, adtFolder);
 
-            Console.WriteLine("Parsing all WMOs...");
+            Log("Parsing all WMOs...");
             ParseAllWMOs(wmos, ref m2s, ref blps, dataFolder);
 
-            Console.WriteLine("Parsing all M2s...");
+            Log("Parsing all M2s...");
             ParseAllM2s(m2s, ref blps, dataFolder);
 
-            Console.WriteLine("-------------------");
-            Console.WriteLine("Totals parsed:\n " +
+            Log("-------------------");
+            Log("Totals parsed:\n " +
                 $"{wmos.Count} WMOs\n " +
                 $"{m2s.Count} M2s\n " +
                 $"{blps.Count} BLPs");
 
             SaveFileOutput(assetsFilePath, wmos, m2s, blps);
-            Console.WriteLine("\nSaved results to: " + assetsFilePath);
-            Console.WriteLine("-------------------");
+            Log("\nSaved results to: " + assetsFilePath);
+            Log("-------------------");
         }
 
         static void SaveFileOutput(string path, List<string> wmos, List<string> m2s, List<string> blps)
@@ -126,7 +139,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                 wmos.AddRange(newWMOs);
                 blps.AddRange(ExtractBLPPathsFromADT(filePath));
 
-                Console.WriteLine($" {filePath}:\n  {newM2s.Count} M2 paths\n  {newWMOs.Count} WMO paths");
+                Log($" {filePath}:\n  {newM2s.Count} M2 paths\n  {newWMOs.Count} WMO paths");
             }
         }
 
@@ -159,7 +172,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                 }
                 else
                 {
-                    Console.WriteLine(" [ERROR] Unable to find file path: " + fullWmoPath);
+                    Log(" [ERROR] Unable to find file path: " + fullWmoPath);
                 }
             }
             wmos.AddRange(subWmos);
@@ -191,7 +204,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                 }
                 else
                 {
-                    Console.WriteLine(" [ERROR] Unable to find file path: " + fullM2Path);
+                    Log(" [ERROR] Unable to find file path: " + fullM2Path);
                 }
             }
         }
@@ -303,7 +316,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                                 }
                                 else
                                 {
-                                    Console.WriteLine(" [ERROR]: Invalid MOTX BLP: " + blp);
+                                    Log(" [ERROR]: Invalid MOTX BLP: " + blp);
                                 }
                             }
                         }
@@ -432,7 +445,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
             }
             catch (ArgumentException e)
             {
-                //Console.WriteLine($"[WARNING] Failed to parse position: '{stream.BaseStream.Position}', {str}: {e.GetType()}: {e.Message}");
+                //Log($"[WARNING] Failed to parse position: '{stream.BaseStream.Position}', {str}: {e.GetType()}: {e.Message}");
             }
             return str;
         }

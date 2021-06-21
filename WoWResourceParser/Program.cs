@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using CommandLine;
 
 namespace WoWResourceParser
 {
@@ -20,18 +21,74 @@ namespace WoWResourceParser
             }
         }
 
+        public class Options
+        {
+            [Option('e', "extract", Required = false, HelpText = "Set whether to extract the assets used to assets.txt.")]
+            public bool Extract { get; set; }
+
+            [Option('p', "package", Required = false, HelpText = "Set whether to package the assets.txt to the destination folder.")]
+            public bool Package { get; set; }
+
+            [Option("assetsFilePath", Required = false, HelpText = "Override the assets.txt file path")]
+            public string AssetsFilePath { get; set; }
+
+            [Option("adtFolder", Required = true, HelpText = "Sets the ADT (map) folder to read from")]
+            public string AdtPath { get; set; }
+
+            [Option("dataFolder", Required = true, HelpText = "Sets the data folder to read assets from")]
+            public string DataPath { get; set; }
+
+            [Option("destFolder", Required = true, HelpText = "Sets the destination folder for packaging to")]
+            public string DestPath { get; set; }
+        }
+
         static void Main(string[] args)
         {
-            bool extract = true;
-            bool package = true;
+            bool extract = false;
+            bool package = false;
 
-            string adtFolder = "E:\\_NewProjectWoW\\_HOCKA\\HourofTwillight\\world\\maps\\DungeonMode";
+            string adtFolder = "E:\\_NewProjectWoW\\_HOCKA\\mpqs\\world\\maps\\DungeonMode";
             string dataFolder = "E:\\_NewProjectWoW\\_HOCKA\\mpqs";
             string assetsFilePath = "assets.txt";
 
             string destFolder = "D:\\WoW 3.3.5a\\Data\\patch-5.MPQ";
 
             File.Delete(LogPath);
+
+            Parser.Default.ParseArguments<Options>(args)
+                .WithParsed(o =>
+                {
+                    if (o.Extract)
+                    {
+                        extract = true;
+                        Log("--Extract = true");
+                    }
+                    if (o.Package)
+                    {
+                        package = true;
+                        Log("--Package = true");
+                    }
+                    if (o.AssetsFilePath?.Length > 0)
+                    {
+                        assetsFilePath = o.AssetsFilePath;
+                        Log("--AssetsPath = " + assetsFilePath);
+                    }
+                    if (o.AdtPath?.Length > 0)
+                    {
+                        adtFolder = o.AdtPath;
+                        Log("--AdtPath = " + adtFolder);
+                    }
+                    if (o.DataPath?.Length > 0)
+                    {
+                        dataFolder = o.DataPath;
+                        Log("--DataPath = " + dataFolder);
+                    }
+                    if (o.DestPath?.Length > 0)
+                    {
+                        destFolder = o.DestPath;
+                        Log("--DestPath = " + destFolder);
+                    }
+                });
 
             if (extract)
             {

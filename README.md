@@ -1,6 +1,8 @@
 # WoW-Map-Asset-Parser
 A work in progress tool for extracting all the used assets on a map so that only the required data needs to be packaged.
 
+This tool only works with WOTLK 3.3.5 and requires all the data to be outside of MPQs but it works.
+
 ```bash
 .\WoWResourceParser.exe
 WoWResourceParser 1.0.0.0

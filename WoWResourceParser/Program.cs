@@ -125,7 +125,7 @@ namespace WoWResourceParser
                     var ignorePath = ignoreDataFolder + "\\" + friendlyLine;
                     if (File.Exists(ignorePath))
                     {
-                        Console.WriteLine($" [INFO] Skipping file in ignore folder: {ignorePath}");
+                        Log($" [INFO] Skipping file in ignore folder: {ignorePath}");
                         continue;
                     }
                 }
@@ -139,6 +139,7 @@ namespace WoWResourceParser
                         File.Delete(destFullPath);
                     }
                     File.Copy(fullPath, destFullPath);
+                    Log($"$ [INFO] Packaged: {destFullPath}");
                 }
                 else
                 {

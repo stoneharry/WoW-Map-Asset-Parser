@@ -40,6 +40,9 @@ namespace WoWResourceParser
 
             [Option("destFolder", Required = true, HelpText = "Sets the destination folder for packaging to")]
             public string DestPath { get; set; }
+
+            [Option("ignoreDataFolder", Required = false, HelpText = "When packaging any files that are contained in this data folder will not be copied over to the destination directory.")]
+            public string IgnoreDataPath { get; set; }
         }
 
         static void Main(string[] args)
@@ -50,6 +53,7 @@ namespace WoWResourceParser
             string adtFolder = "E:\\_NewProjectWoW\\_HOCKA\\mpqs\\world\\maps\\DungeonMode";
             string dataFolder = "E:\\_NewProjectWoW\\_HOCKA\\mpqs";
             string assetsFilePath = "assets.txt";
+            string ignoreDataFolder = "";
 
             string destFolder = "D:\\WoW 3.3.5a\\Data\\patch-5.MPQ";
 
@@ -88,6 +92,11 @@ namespace WoWResourceParser
                         destFolder = o.DestPath;
                         Log("--DestPath = " + destFolder);
                     }
+                    if (o.IgnoreDataPath?.Length > 0)
+                    {
+                        ignoreDataFolder = o.IgnoreDataPath;
+                        Log("--IgnoreDataPath = " + ignoreDataFolder);
+                    }
                 });
 
             if (extract)
@@ -97,13 +106,13 @@ namespace WoWResourceParser
 
             if (package)
             {
-                FetchAssets(dataFolder, destFolder, assetsFilePath);
+                FetchAssets(dataFolder, destFolder, assetsFilePath, ignoreDataFolder);
             }
 
             Log("Done.");
         }
 
-        static void FetchAssets(string dataFolder, string destFolder, string assetsFilePath)
+        static void FetchAssets(string dataFolder, string destFolder, string assetsFilePath, string ignoreDataFolder)
         {
             Log("Packaging...");
             Log("-------------------");
@@ -111,6 +120,15 @@ namespace WoWResourceParser
             {
                 var friendlyLine = line.Replace(".MDX", ".M2").Replace('/', '\\'); ;
                 var fullPath = dataFolder + "\\" + friendlyLine;
+                if (ignoreDataFolder.Length > 0)
+                {
+                    var ignorePath = ignoreDataFolder + "\\" + friendlyLine;
+                    if (File.Exists(ignorePath))
+                    {
+                        Log($" [INFO] Skipping file in ignore folder: {ignorePath}");
+                        continue;
+                    }
+                }
                 if (File.Exists(fullPath))
                 {
                     var destFullPath = destFolder + "\\" + friendlyLine;
@@ -121,10 +139,11 @@ namespace WoWResourceParser
                         File.Delete(destFullPath);
                     }
                     File.Copy(fullPath, destFullPath);
+                    Log($"$ [INFO] Packaged: {destFullPath}");
                 }
                 else
                 {
-                    Log($" [ERROR] Unable to find path {fullPath}");
+                    Log($" [ERROR] Unable to find path: {fullPath}");
                 }
             }
             Log("-------------------");

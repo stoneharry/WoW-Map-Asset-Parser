@@ -174,7 +174,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
             var blps = new List<string>();
 
             Log("Parsing all ADTs...");
-            ParseAllADTs(ref wmos, ref m2s, ref blps, adtFolder);
+            ParseAllADTs(ref wmos, ref m2s, ref blps, adtFolder, dataFolder);
 
             Log("Parsing all WMOs...");
             ParseAllWMOs(wmos, ref m2s, ref blps, dataFolder);
@@ -202,8 +202,13 @@ ADT Folder:" + $"\n {adtFolder}\n" +
             File.WriteAllLines(path, output);
         }
 
-        static void ParseAllADTs(ref List<string> wmos, ref List<string> m2s, ref List<string> blps, string adtFolder)
+        static void ParseAllADTs(ref List<string> wmos, ref List<string> m2s, ref List<string> blps, string adtFolder, string dataFolder)
         {
+            if (!Directory.Exists(adtFolder))
+            {
+                Console.WriteLine(" [ERROR]: Unable to find path: " + adtFolder);
+                return;
+            }
             foreach (var filePath in Directory.EnumerateFiles(adtFolder))
             {
                 if (!filePath.ToLower().EndsWith(".adt"))
@@ -213,7 +218,10 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                 m2s.AddRange(newM2s);
                 var newWMOs = ExtractWMOPathsFromADT(filePath);
                 wmos.AddRange(newWMOs);
-                blps.AddRange(ExtractBLPPathsFromADT(filePath));
+                foreach (var path in ExtractBLPPathsFromADT(filePath))
+                {
+                    AddBLP(ref blps, path, dataFolder);
+                }
 
                 Log($" {filePath}:\n  {newM2s.Count} M2 paths\n  {newWMOs.Count} WMO paths");
             }
@@ -227,11 +235,16 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                 string fullWmoPath = $"{dataFolder}\\{wmoPath}";
                 if (File.Exists(fullWmoPath))
                 {
-                    ExtractAssetsFromWMO(ref m2s, ref blps, fullWmoPath);
+                    ExtractAssetsFromWMO(ref m2s, ref blps, fullWmoPath, dataFolder);
                     var pathPartA = wmoPath.Substring(wmoPath.LastIndexOf('\\') + 1);
                     var file = pathPartA.Substring(0, pathPartA.LastIndexOf('.')).ToUpper();
                     var folder = fullWmoPath.Substring(0, fullWmoPath.LastIndexOf('\\'));
                     var parentShortFolder = folder.Substring(dataFolder.Length + 1);
+                    if (!Directory.Exists(folder))
+                    {
+                        Console.WriteLine(" [ERROR]: Unable to find path: " + folder);
+                        continue;
+                    }
                     foreach (var filePath in Directory.EnumerateFiles(folder))
                     {
                         var subFilePath = filePath.Substring(filePath.LastIndexOf('\\') + 1);
@@ -241,7 +254,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                             // Check for x_000.wmo - a sub wmo with no useful data for us
                             if (!Regex.IsMatch(subFilePath, @"_\d{3}\.\wmo"))
                             {
-                                ExtractAssetsFromWMO(ref m2s, ref blps, filePath);
+                                ExtractAssetsFromWMO(ref m2s, ref blps, filePath, dataFolder);
                             }
                         }
                     }
@@ -261,11 +274,16 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                 string fullM2Path = $"{dataFolder}\\{m2Path.Replace(".MDX", ".M2")}";
                 if (File.Exists(fullM2Path))
                 {
-                    ExtractAssetsFromM2(ref blps, fullM2Path);
+                    ExtractAssetsFromM2(ref blps, fullM2Path, dataFolder);
                     var pathPartA = m2Path.Substring(m2Path.LastIndexOf('\\') + 1);
                     var file = pathPartA.Substring(0, pathPartA.LastIndexOf('.')).ToUpper();
                     var folder = fullM2Path.Substring(0, fullM2Path.LastIndexOf('\\'));
                     var parentShortFolder = folder.Substring(dataFolder.Length + 1);
+                    if (!Directory.Exists(folder))
+                    {
+                        Console.WriteLine(" [ERROR]: Unable to find path: " + folder);
+                        continue;
+                    }
                     foreach (var filePath in Directory.EnumerateFiles(folder))
                     {
                         // Don't have anything to store .skins, hack by inserting into blps which we don't do any processing on
@@ -273,7 +291,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                         if (subFilePath.Contains(file) && 
                             (subFilePath.EndsWith(".SKIN") || subFilePath.EndsWith(".BLP")))
                         {
-                            blps.Add(parentShortFolder + "\\" + subFilePath);
+                            AddBLP(ref blps, parentShortFolder + "\\" + subFilePath, dataFolder);
                         }
                     }
 
@@ -285,7 +303,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
             }
         }
 
-        static void ExtractAssetsFromM2(ref List<string> blps, string path)
+        static void ExtractAssetsFromM2(ref List<string> blps, string path, string dataFolder)
         {
             // First read number of textures and location
             var offset = 80;
@@ -349,14 +367,14 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                             {
                                 blp = blp.Substring(0, blp.Length - 1);
                             }
-                            blps.Add(blp);
+                            AddBLP(ref blps, blp, dataFolder);
                         }
                     }
                 }
             }
         }
 
-        static void ExtractAssetsFromWMO(ref List<string> m2s, ref List<string> blps, string path)
+        static void ExtractAssetsFromWMO(ref List<string> m2s, ref List<string> blps, string path, string dataFolder)
         {
             var newM2s = ExtractStringListFromChunk(
                 path,
@@ -367,10 +385,36 @@ ADT Folder:" + $"\n {adtFolder}\n" +
 
             // Read The MOMT chunk for offsets into MOTX chunk
             var motxOffsets = GetWMOMOTXOffsetsFromMOMT(path);
-            blps.AddRange(GetWMOBLPFromMOTX(path, motxOffsets));
+            foreach (var blpPath in GetWMOBLPFromMOTX(path, motxOffsets, dataFolder))
+            {
+                AddBLP(ref blps, blpPath, dataFolder);
+            }
         }
 
-        static List<string> GetWMOBLPFromMOTX(string path, List<uint> motxOffsets)
+        static void AddBLP(ref List<string> blps, string path, string dataFolder)
+        {
+            path = path.Replace("/", "\\");
+            blps.Add(path);
+            if (path.ToUpper().EndsWith("_S.BLP"))
+            {
+                return;
+            }
+            var pathPartA = path.Substring(path.LastIndexOf('\\') + 1);
+            var file = pathPartA.Substring(0, pathPartA.LastIndexOf('.')).ToUpper();
+            var folder = path.Substring(0, path.LastIndexOf('\\'));
+            if (!Directory.Exists(dataFolder + "\\" + folder))
+            {
+                Console.WriteLine(" [ERROR]: Unable to find path: " + folder);
+                return;
+            }
+            var specular = folder + file + "_S.blp";
+            if (File.Exists(dataFolder + "\\" + specular))
+            {
+                AddBLP(ref blps, specular, dataFolder);
+            }
+        }
+
+        static List<string> GetWMOBLPFromMOTX(string path, List<uint> motxOffsets, string dataFolder)
         {
             var blps = new List<string>();
             // XTOM = MOTX chunk
@@ -391,7 +435,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                                 // Sometimes reads rubbish, this algorithm isn't quite right
                                 if (blp.ToUpper().EndsWith(".BLP"))
                                 {
-                                    blps.Add(blp);
+                                    AddBLP(ref blps, blp, dataFolder);
                                 }
                                 else
                                 {

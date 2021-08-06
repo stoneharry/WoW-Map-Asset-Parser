@@ -419,7 +419,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                 Console.WriteLine(" [ERROR]: Unable to find path: " + folder);
                 return;
             }
-            var specular = folder + file + "_S.blp";
+            var specular = folder + "\\" + file + "_S.blp";
             if (File.Exists(dataFolder + "\\" + specular))
             {
                 AddBLP(ref blps, specular, dataFolder);

@@ -169,9 +169,9 @@ ADT Folder:" + $"\n {adtFolder}\n" +
             Log(banner);
             Log("-------------------");
 
-            var wmos = new List<string>();
-            var m2s = new List<string>();
-            var blps = new List<string>();
+            var wmos = new HashSet<string>();
+            var m2s = new HashSet<string>();
+            var blps = new HashSet<string>();
 
             Log("Parsing all ADTs...");
             ParseAllADTs(ref wmos, ref m2s, ref blps, adtFolder, dataFolder);
@@ -193,7 +193,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
             Log("-------------------");
         }
 
-        static void SaveFileOutput(string path, List<string> wmos, List<string> m2s, List<string> blps)
+        static void SaveFileOutput(string path, HashSet<string> wmos, HashSet<string> m2s, HashSet<string> blps)
         {
             var output = new List<string>(wmos.Count + m2s.Count + blps.Count);
             output.AddRange(wmos);
@@ -202,7 +202,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
             File.WriteAllLines(path, output);
         }
 
-        static void ParseAllADTs(ref List<string> wmos, ref List<string> m2s, ref List<string> blps, string adtFolder, string dataFolder)
+        static void ParseAllADTs(ref HashSet<string> wmos, ref HashSet<string> m2s, ref HashSet<string> blps, string adtFolder, string dataFolder)
         {
             if (!Directory.Exists(adtFolder))
             {
@@ -215,9 +215,15 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                     continue;
 
                 var newM2s = ExtractM2PathsFromADT(filePath);
-                m2s.AddRange(newM2s);
+                foreach (var m2 in newM2s)
+                {
+                    m2s.Add(m2);
+                }
                 var newWMOs = ExtractWMOPathsFromADT(filePath);
-                wmos.AddRange(newWMOs);
+                foreach (var wmo in newWMOs)
+                {
+                    wmos.Add(wmo);
+                }
                 foreach (var path in ExtractBLPPathsFromADT(filePath))
                 {
                     AddBLP(ref blps, path, dataFolder);
@@ -227,9 +233,9 @@ ADT Folder:" + $"\n {adtFolder}\n" +
             }
         }
 
-        static void ParseAllWMOs(List<string> wmos, ref List<string> m2s, ref List<string> blps, string dataFolder)
+        static void ParseAllWMOs(HashSet<string> wmos, ref HashSet<string> m2s, ref HashSet<string> blps, string dataFolder)
         {
-            var subWmos = new List<string>();
+            var subWmos = new HashSet<string>();
             foreach (var wmoPath in wmos)
             {
                 string fullWmoPath = $"{dataFolder}\\{wmoPath}";
@@ -264,10 +270,13 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                     Log(" [ERROR] Unable to find file path: " + fullWmoPath);
                 }
             }
-            wmos.AddRange(subWmos);
+            foreach (var subwmo in subWmos)
+            {
+                wmos.Add(subwmo);
+            }
         }
 
-        static void ParseAllM2s(List<string> m2s, ref List<string> blps, string dataFolder)
+        static void ParseAllM2s(HashSet<string> m2s, ref HashSet<string> blps, string dataFolder)
         {
             foreach (var m2Path in m2s)
             {
@@ -303,7 +312,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
             }
         }
 
-        static void ExtractAssetsFromM2(ref List<string> blps, string path, string dataFolder)
+        static void ExtractAssetsFromM2(ref HashSet<string> blps, string path, string dataFolder)
         {
             // First read number of textures and location
             var offset = 80;
@@ -374,14 +383,17 @@ ADT Folder:" + $"\n {adtFolder}\n" +
             }
         }
 
-        static void ExtractAssetsFromWMO(ref List<string> m2s, ref List<string> blps, string path, string dataFolder)
+        static void ExtractAssetsFromWMO(ref HashSet<string> m2s, ref HashSet<string> blps, string path, string dataFolder)
         {
             var newM2s = ExtractStringListFromChunk(
                 path,
                 // NDOM = MODN chunk
                 new int[] { 'N', 'D', 'O', 'M' },
                 new string[] { ".m2", ".mdx" }.ToList());
-            m2s.AddRange(newM2s);
+            foreach (var m2 in newM2s)
+            {
+                m2s.Add(m2);
+            }
 
             // Read The MOMT chunk for offsets into MOTX chunk
             var motxOffsets = GetWMOMOTXOffsetsFromMOMT(path);
@@ -391,7 +403,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
             }
         }
 
-        static void AddBLP(ref List<string> blps, string path, string dataFolder)
+        static void AddBLP(ref HashSet<string> blps, string path, string dataFolder)
         {
             path = path.Replace("/", "\\");
             blps.Add(path);
@@ -414,9 +426,9 @@ ADT Folder:" + $"\n {adtFolder}\n" +
             }
         }
 
-        static List<string> GetWMOBLPFromMOTX(string path, List<uint> motxOffsets, string dataFolder)
+        static HashSet<string> GetWMOBLPFromMOTX(string path, List<uint> motxOffsets, string dataFolder)
         {
-            var blps = new List<string>();
+            var blps = new HashSet<string>();
             // XTOM = MOTX chunk
             long offset = FindChunkOffset(path, new int[] { 'X', 'T', 'O', 'M' }) + 4;
             if (offset > 0)
@@ -493,7 +505,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
             }
         }
 
-        static List<string> ExtractM2PathsFromADT(string path)
+        static HashSet<string> ExtractM2PathsFromADT(string path)
         {
             return ExtractStringListFromChunk(
                 path,
@@ -502,7 +514,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                 new string[] { ".m2", ".mdx" }.ToList());
         }
 
-        static List<string> ExtractWMOPathsFromADT(string path)
+        static HashSet<string> ExtractWMOPathsFromADT(string path)
         {
             return ExtractStringListFromChunk(
                 path,
@@ -511,7 +523,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                 new string[] { ".wmo" }.ToList());
         }
 
-        static List<string> ExtractBLPPathsFromADT(string path)
+        static HashSet<string> ExtractBLPPathsFromADT(string path)
         {
             return ExtractStringListFromChunk(
                 path,
@@ -520,9 +532,9 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                 new string[] { ".blp" }.ToList());
         }
 
-        static List<string> ExtractStringListFromChunk(string path, int[] chunk, List<string> extensionsValidated)
+        static HashSet<string> ExtractStringListFromChunk(string path, int[] chunk, List<string> extensionsValidated)
         {
-            var list = new List<string>();
+            var list = new HashSet<string>();
             long offset = FindChunkOffset(path, chunk);
             if (offset == -1)
                 return list;

@@ -298,7 +298,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                         // Don't have anything to store .skins, hack by inserting into blps which we don't do any processing on
                         var subFilePath = filePath.Substring(filePath.LastIndexOf('\\') + 1).ToUpper();
                         if (subFilePath.Contains(file) && 
-                            (subFilePath.EndsWith(".SKIN") || subFilePath.EndsWith(".BLP")))
+                            (subFilePath.EndsWith(".SKIN") || subFilePath.EndsWith(".BLP") || subFilePath.EndsWith(".ANIM")))
                         {
                             AddBLP(ref blps, parentShortFolder + "\\" + subFilePath, dataFolder);
                         }

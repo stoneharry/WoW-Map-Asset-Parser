@@ -228,14 +228,12 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                 var newM2s = ExtractM2PathsFromADT(filePath);
                 foreach (var m2 in newM2s)
                 {
-                    if (!m2s.Contains(m2))
-                        m2s.Add(m2);
+                    m2s.Add(m2);
                 }
                 var newWMOs = ExtractWMOPathsFromADT(filePath);
                 foreach (var wmo in newWMOs)
                 {
-                    if (!wmos.Contains(wmo))
-                        wmos.Add(wmo);
+                    wmos.Add(wmo);
                 }
                 foreach (var path in ExtractBLPPathsFromADT(filePath))
                 {
@@ -266,8 +264,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
             }
             foreach (var subwmo in subWmos)
             {
-                if (!wmos.Contains(subwmo))
-                    wmos.Add(subwmo);
+                wmos.Add(subwmo);
             }
         }
         static void ProcessWMO(string dataFolder, string wmoPath, string fullWmoPath, ref HashSet<string> m2s, ref HashSet<string> blps, ref HashSet<string> subWmos)
@@ -429,8 +426,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                 new string[] { ".m2", ".mdx" }.ToList());
             foreach (var m2 in newM2s)
             {
-                if (!m2s.Contains(m2))
-                    m2s.Add(m2);
+                m2s.Add(m2);
             }
 
             // Read The MOMT chunk for offsets into MOTX chunk

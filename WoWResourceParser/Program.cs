@@ -43,19 +43,24 @@ namespace WoWResourceParser
 
             [Option("ignoreDataFolder", Required = false, HelpText = "When packaging any files that are contained in this data folder will not be copied over to the destination directory.")]
             public string IgnoreDataPath { get; set; }
+
+            [Option("objectFolder", Required = false, HelpText = "Set folder to read WMO and M2 from.")]
+            public string objectFolder { get; set; }
+
+
         }
 
         static void Main(string[] args)
         {
             bool extract = false;
             bool package = false;
-
             string adtFolder = "E:\\_NewProjectWoW\\_HOCKA\\mpqs\\world\\maps\\DungeonMode";
             string dataFolder = "E:\\_NewProjectWoW\\_HOCKA\\mpqs";
             string assetsFilePath = "assets.txt";
             string ignoreDataFolder = "";
 
             string destFolder = "D:\\WoW 3.3.5a\\Data\\patch-5.MPQ";
+            string objectFolder = "";
 
             File.Delete(LogPath);
 
@@ -72,6 +77,7 @@ namespace WoWResourceParser
                         package = true;
                         Log("--Package = true");
                     }
+
                     if (o.AssetsFilePath?.Length > 0)
                     {
                         assetsFilePath = o.AssetsFilePath;
@@ -97,11 +103,16 @@ namespace WoWResourceParser
                         ignoreDataFolder = o.IgnoreDataPath;
                         Log("--IgnoreDataPath = " + ignoreDataFolder);
                     }
+                    if (o.objectFolder?.Length > 0)
+                    {
+                        objectFolder = o.objectFolder;
+                        Log("--objectFolder = " + objectFolder);
+                    }
                 });
 
             if (extract)
             {
-                ExtractAssets(adtFolder, dataFolder, assetsFilePath);
+                ExtractAssets(adtFolder, dataFolder, assetsFilePath, objectFolder);
             }
 
             if (package)
@@ -149,7 +160,7 @@ namespace WoWResourceParser
             Log("-------------------");
         }
 
-        static void ExtractAssets(string adtFolder, string dataFolder, string assetsFilePath)
+        static void ExtractAssets(string adtFolder, string dataFolder, string assetsFilePath, string objectFolder)
         {
             Log("-------------------");
             var banner = @"
@@ -177,10 +188,10 @@ ADT Folder:" + $"\n {adtFolder}\n" +
             ParseAllADTs(ref wmos, ref m2s, ref blps, adtFolder, dataFolder);
 
             Log("Parsing all WMOs...");
-            ParseAllWMOs(wmos, ref m2s, ref blps, dataFolder);
+            ParseAllWMOs(wmos, ref m2s, ref blps, dataFolder, objectFolder);
 
             Log("Parsing all M2s...");
-            ParseAllM2s(m2s, ref blps, dataFolder);
+            ParseAllM2s(m2s, ref blps, dataFolder, objectFolder);
 
             Log("-------------------");
             Log("Totals parsed:\n " +
@@ -233,41 +244,22 @@ ADT Folder:" + $"\n {adtFolder}\n" +
             }
         }
 
-        static void ParseAllWMOs(HashSet<string> wmos, ref HashSet<string> m2s, ref HashSet<string> blps, string dataFolder)
+        static void ParseAllWMOs(HashSet<string> wmos, ref HashSet<string> m2s, ref HashSet<string> blps, string dataFolder, string objectFolder)
         {
             var subWmos = new HashSet<string>();
             foreach (var wmoPath in wmos)
             {
                 string fullWmoPath = $"{dataFolder}\\{wmoPath}";
-                if (File.Exists(fullWmoPath))
+                ProcessWMO(dataFolder, wmoPath, fullWmoPath, ref m2s, ref blps, ref subWmos);
+            }
+            if (objectFolder.Length > 0)
+            {
+                foreach (var filePath in Directory.EnumerateFiles(objectFolder, "*.*", SearchOption.AllDirectories))
                 {
-                    ExtractAssetsFromWMO(ref m2s, ref blps, fullWmoPath, dataFolder);
-                    var pathPartA = wmoPath.Substring(wmoPath.LastIndexOf('\\') + 1);
-                    var file = pathPartA.Substring(0, pathPartA.LastIndexOf('.')).ToUpper();
-                    var folder = fullWmoPath.Substring(0, fullWmoPath.LastIndexOf('\\'));
-                    var parentShortFolder = folder.Substring(dataFolder.Length + 1);
-                    if (!Directory.Exists(folder))
-                    {
-                        Console.WriteLine(" [ERROR]: Unable to find path: " + folder);
-                        continue;
-                    }
-                    foreach (var filePath in Directory.EnumerateFiles(folder))
-                    {
-                        var subFilePath = filePath.Substring(filePath.LastIndexOf('\\') + 1);
-                        if (subFilePath.ToUpper().Contains(file))
-                        {
-                            subWmos.Add(parentShortFolder + "\\" + subFilePath);
-                            // Check for x_000.wmo - a sub wmo with no useful data for us
-                            if (!Regex.IsMatch(subFilePath, @"_\d{3}\.\wmo"))
-                            {
-                                ExtractAssetsFromWMO(ref m2s, ref blps, filePath, dataFolder);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    Log(" [ERROR] Unable to find file path: " + fullWmoPath);
+                    var wmoPath = filePath.Replace(objectFolder, "");
+                    if (filePath.ToLower().EndsWith("wmo"))
+                        ProcessWMO(dataFolder, wmoPath, filePath, ref m2s, ref blps, ref subWmos);
+
                 }
             }
             foreach (var subwmo in subWmos)
@@ -275,43 +267,85 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                 wmos.Add(subwmo);
             }
         }
-
-        static void ParseAllM2s(HashSet<string> m2s, ref HashSet<string> blps, string dataFolder)
+        static void ProcessWMO(string dataFolder, string wmoPath, string fullWmoPath, ref HashSet<string> m2s, ref HashSet<string> blps, ref HashSet<string> subWmos)
+        {
+            if (File.Exists(fullWmoPath))
+            {
+                ExtractAssetsFromWMO(ref m2s, ref blps, fullWmoPath, dataFolder);
+                var pathPartA = wmoPath.Substring(wmoPath.LastIndexOf('\\') + 1);
+                var file = pathPartA.Substring(0, pathPartA.LastIndexOf('.')).ToUpper();
+                var folder = fullWmoPath.Substring(0, fullWmoPath.LastIndexOf('\\'));
+                var parentShortFolder = folder.Substring(dataFolder.Length + 1);
+                if (!Directory.Exists(folder))
+                {
+                    Console.WriteLine(" [ERROR]: Unable to find path: " + folder);
+                    return;
+                }
+                foreach (var filePath in Directory.EnumerateFiles(folder))
+                {
+                    var subFilePath = filePath.Substring(filePath.LastIndexOf('\\') + 1);
+                    if (subFilePath.ToUpper().Contains(file))
+                    {
+                        subWmos.Add(parentShortFolder + "\\" + subFilePath);
+                        // Check for x_000.wmo - a sub wmo with no useful data for us
+                        if (!Regex.IsMatch(subFilePath, @"_\d{3}\.\wmo"))
+                        {
+                            ExtractAssetsFromWMO(ref m2s, ref blps, filePath, dataFolder);
+                        }
+                    }
+                }
+            }
+        }
+        static void ParseAllM2s(HashSet<string> m2s, ref HashSet<string> blps, string dataFolder, string objectFolder)
         {
             foreach (var m2Path in m2s)
             {
                 string fullM2Path = $"{dataFolder}\\{m2Path.Replace(".MDX", ".M2")}";
-                if (File.Exists(fullM2Path))
+                ProcessM2(dataFolder, m2Path, fullM2Path, ref m2s, ref blps);
+            }
+            if (objectFolder.Length > 0)
+            {
+                foreach (var filePath in Directory.EnumerateFiles(objectFolder, "*.*", SearchOption.AllDirectories))
                 {
-                    ExtractAssetsFromM2(ref blps, fullM2Path, dataFolder);
-                    var pathPartA = m2Path.Substring(m2Path.LastIndexOf('\\') + 1);
-                    var file = pathPartA.Substring(0, pathPartA.LastIndexOf('.')).ToUpper();
-                    var folder = fullM2Path.Substring(0, fullM2Path.LastIndexOf('\\'));
-                    var parentShortFolder = folder.Substring(dataFolder.Length + 1);
-                    if (!Directory.Exists(folder))
-                    {
-                        Console.WriteLine(" [ERROR]: Unable to find path: " + folder);
-                        continue;
-                    }
-                    foreach (var filePath in Directory.EnumerateFiles(folder))
-                    {
-                        // Don't have anything to store .skins, hack by inserting into blps which we don't do any processing on
-                        var subFilePath = filePath.Substring(filePath.LastIndexOf('\\') + 1).ToUpper();
-                        if (subFilePath.Contains(file) && 
-                            (subFilePath.EndsWith(".SKIN") || subFilePath.EndsWith(".BLP") || subFilePath.EndsWith(".ANIM")))
-                        {
-                            AddBLP(ref blps, parentShortFolder + "\\" + subFilePath, dataFolder);
-                        }
-                    }
+                    var m2Path = filePath.Replace(objectFolder, "");
+                    if (filePath.ToLower().EndsWith("m2"))
+                        ProcessM2(dataFolder, m2Path, filePath, ref m2s, ref blps);
 
-                }
-                else
-                {
-                    Log(" [ERROR] Unable to find file path: " + fullM2Path);
                 }
             }
         }
 
+        static void ProcessM2(string dataFolder, string m2Path, string fullM2Path, ref HashSet<string> m2s, ref HashSet<string> blps)
+        {
+            if (File.Exists(fullM2Path))
+            {
+                ExtractAssetsFromM2(ref blps, fullM2Path, dataFolder);
+                var pathPartA = m2Path.Substring(m2Path.LastIndexOf('\\') + 1);
+                var file = pathPartA.Substring(0, pathPartA.LastIndexOf('.')).ToUpper();
+                var folder = fullM2Path.Substring(0, fullM2Path.LastIndexOf('\\'));
+                var parentShortFolder = folder.Substring(dataFolder.Length + 1);
+                if (!Directory.Exists(folder))
+                {
+                    Console.WriteLine(" [ERROR]: Unable to find path: " + folder);
+                    return;
+                }
+                foreach (var filePath in Directory.EnumerateFiles(folder))
+                {
+                    // Don't have anything to store .skins, hack by inserting into blps which we don't do any processing on
+                    var subFilePath = filePath.Substring(filePath.LastIndexOf('\\') + 1).ToUpper();
+                    if (subFilePath.Contains(file) &&
+                        (subFilePath.EndsWith(".SKIN") || subFilePath.EndsWith(".BLP") || subFilePath.EndsWith(".ANIM")))
+                    {
+                        AddBLP(ref blps, parentShortFolder + "\\" + subFilePath, dataFolder);
+                    }
+                }
+
+            }
+            else
+            {
+                Log(" [ERROR] Unable to find file path: " + fullM2Path);
+            }
+        }
         static void ExtractAssetsFromM2(ref HashSet<string> blps, string path, string dataFolder)
         {
             // First read number of textures and location
@@ -548,7 +582,7 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                     while (continueReading)
                     {
                         var str = ReadNullTerminatedString(binReader);
-                        if (fileStream.Position >= fileStream.Length || 
+                        if (fileStream.Position >= fileStream.Length ||
                             (str.Length > 0 && !ValidFileExtension(str, extensionsValidated)))
                         {
                             continueReading = false;

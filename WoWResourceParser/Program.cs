@@ -401,6 +401,11 @@ ADT Folder:" + $"\n {adtFolder}\n" +
                     fileStream.Position = pair.Value;
                     using (var binReader = new BinaryReader(fileStream))
                     {
+                        if (((int)pair.Key) <= 0)
+                        {
+                            Log($"[WARNING] Skipping BLP at invalid position {pair.Key} for file: {path}");
+                            continue;
+                        }
                         var blp = Encoding.UTF8.GetString(binReader.ReadBytes((int)pair.Key));
                         // Factor in string terminator
                         if (blp.Length > 1)
@@ -439,24 +444,32 @@ ADT Folder:" + $"\n {adtFolder}\n" +
 
         static void AddBLP(ref HashSet<string> blps, string path, string dataFolder)
         {
-            path = path.Replace("/", "\\");
-            blps.Add(path);
-            if (path.ToUpper().EndsWith("_S.BLP"))
+            Log("Processing BLP: " + path);
+            try
             {
-                return;
+                path = path.Replace("/", "\\");
+                blps.Add(path);
+                if (path.ToUpper().EndsWith("_S.BLP"))
+                {
+                    return;
+                }
+                var pathPartA = path.Substring(path.LastIndexOf('\\') + 1);
+                var file = pathPartA.Substring(0, pathPartA.LastIndexOf('.')).ToUpper();
+                var folder = path.Substring(0, path.LastIndexOf('\\'));
+                if (!Directory.Exists(dataFolder + "\\" + folder))
+                {
+                    Console.WriteLine(" [ERROR]: Unable to find path: " + folder);
+                    return;
+                }
+                var specular = folder + "\\" + file + "_S.blp";
+                if (File.Exists(dataFolder + "\\" + specular))
+                {
+                    AddBLP(ref blps, specular, dataFolder);
+                }
             }
-            var pathPartA = path.Substring(path.LastIndexOf('\\') + 1);
-            var file = pathPartA.Substring(0, pathPartA.LastIndexOf('.')).ToUpper();
-            var folder = path.Substring(0, path.LastIndexOf('\\'));
-            if (!Directory.Exists(dataFolder + "\\" + folder))
+            catch (Exception e)
             {
-                Console.WriteLine(" [ERROR]: Unable to find path: " + folder);
-                return;
-            }
-            var specular = folder + "\\" + file + "_S.blp";
-            if (File.Exists(dataFolder + "\\" + specular))
-            {
-                AddBLP(ref blps, specular, dataFolder);
+                Log("[ERROR]: " + e.ToString());
             }
         }
 

@@ -31,5 +31,5 @@ ERROR(S):
   ```
 Example usage:
 ```bash
-.\WoWResourceParser.exe -e -p --adtFolder=E:\_NewProjectWoW\_HOCKA\mpqs\world\maps\DungeonMode --dataFolder=E:\_NewProjectWoW\_HOCKA\mpqs "--destFolder=D:\WoW 3.3.5a\Data\patch-5.MPQ"
+.\WoWResourceParser.exe -e -p --adtFolder="E:\_NewProjectWoW\_HOCKA\mpqs\world\maps\DungeonMode" --dataFolder="E:\_NewProjectWoW\_HOCKA\mpqs" --destFolder="D:\WoW 3.3.5a\Data\patch-5.MPQ"
 ```

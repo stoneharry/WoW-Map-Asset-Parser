@@ -629,6 +629,10 @@ ADT Folder:" + $"\n {adtFolder}\n" +
             {
                 //Log($"[WARNING] Failed to parse position: '{stream.BaseStream.Position}', {str}: {e.GetType()}: {e.Message}");
             }
+            catch (EndOfStreamException e)
+            {
+                Log($"[ERROR] Unexpected end of stream parsing: {str}: {e.GetType()}: {e.Message}");
+            }
             return str;
         }
 
